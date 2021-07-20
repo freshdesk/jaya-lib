@@ -70,7 +70,8 @@ export class TimerRuleEngine {
         isMatchingTimerRule = true;
       } catch (err) {}
       if (isMatchingTimerRule) {
-        const jobId = `${modelProperties.app_id}_${modelProperties.conversation_id}_${ruleIndex}`;
+        const ruleIdentifier = rule.ruleAlias ? rule.ruleAlias : ruleIndex;
+        const jobId = `${modelProperties.app_id}_${modelProperties.conversation_id}_${ruleIdentifier}`;
 
         // Fetch an existing schedule for the same current rule,
         let existingSchedule;
@@ -101,6 +102,7 @@ export class TimerRuleEngine {
                   timestamp: payload.timestamp,
                   version: payload.timestamp,
                 },
+                ruleAlias: rule.ruleAlias,
                 ruleIndex,
               },
               scheduledTime: this.addSeconds(new Date(), rule.timerValue).toISOString(),
@@ -170,8 +172,13 @@ export class TimerRuleEngine {
       throw new Error('Error deleting kairos schedule before execution');
     }
 
-    // Get actions from rules
-    const timerRule = rules[externalEventPayload.data.ruleIndex];
+    let timerRule: Rule | undefined;
+    // Get rule that needs to be executed
+    if (externalEventPayload.data.ruleAlias) {
+      timerRule = rules.find((rule) => rule.ruleAlias === externalEventPayload.data.ruleAlias);
+    } else {
+      timerRule = rules[externalEventPayload.data.ruleIndex];
+    }
 
     // Execute actions
     if (timerRule && Array.isArray(timerRule.actions)) {
@@ -205,7 +212,8 @@ export class TimerRuleEngine {
       }
 
       if (isMatch) {
-        jobIds.push(`${modelProperties.app_id}_${modelProperties.conversation_id}_${ruleIndex}`);
+        const ruleIdentifier = rule.ruleAlias ? rule.ruleAlias : ruleIndex;
+        jobIds.push(`${modelProperties.app_id}_${modelProperties.conversation_id}_${ruleIdentifier}`);
       }
       return jobIds;
     }, []);
